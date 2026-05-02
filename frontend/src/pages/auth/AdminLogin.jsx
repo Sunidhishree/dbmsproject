@@ -145,15 +145,6 @@ export default function AdminLogin() {
                             Sign in with Google
                         </button>
 
-                        <p className="text-center text-gray-600 mt-6">
-                            Don't have an account?{' '}
-                            <button
-                                onClick={() => navigate('/signup/admin')}
-                                className="text-red-dark font-semibold hover:underline"
-                            >
-                                Sign Up
-                            </button>
-                        </p>
                     </div>
                 </div>
             </div>

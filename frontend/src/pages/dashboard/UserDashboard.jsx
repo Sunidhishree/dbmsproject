@@ -42,7 +42,7 @@ export default function UserDashboard() {
     const fetchDonorProfile = async () => {
         try {
             const token = localStorage.getItem('authToken') || localStorage.getItem('firebaseToken')
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/donors/me`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/donors/me`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
 
@@ -62,7 +62,7 @@ export default function UserDashboard() {
     const fetchUserRequests = async () => {
         try {
             const token = localStorage.getItem('authToken') || localStorage.getItem('firebaseToken')
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/requests/mine`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/requests/mine`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
 
@@ -94,7 +94,7 @@ export default function UserDashboard() {
 
         try {
             const token = localStorage.getItem('authToken') || localStorage.getItem('firebaseToken')
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/requests/create`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/requests/create`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

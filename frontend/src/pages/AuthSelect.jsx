@@ -38,9 +38,6 @@ export default function AuthSelect() {
                                 <button onClick={() => navigate('/login/admin')} className="brand-button--ghost w-full">
                                     Login
                                 </button>
-                                <button onClick={() => navigate('/signup/admin')} className="brand-button w-full">
-                                    Sign Up
-                                </button>
                             </div>
                         </div>
 

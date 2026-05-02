@@ -26,6 +26,8 @@ def verify_firebase_token(f):
                 google_requests.Request(),
                 audience=project_id,
             )
+            if "uid" not in decoded_token:
+                decoded_token["uid"] = decoded_token.get("user_id") or decoded_token.get("sub")
             request.user = decoded_token
             return f(*args, **kwargs)
         except Exception as e:

@@ -30,6 +30,8 @@ export default function AdminDashboard() {
     const [areaFilter, setAreaFilter] = useState('')
 
     // Query Database state
+    const [selectedRequest, setSelectedRequest] = useState(null)
+    const [notificationSent, setNotificationSent] = useState(null)
     const [areas, setAreas] = useState([])
     const [queryResults, setQueryResults] = useState([])
     const [queryLoading, setQueryLoading] = useState(false)
@@ -69,16 +71,16 @@ export default function AdminDashboard() {
             const token = localStorage.getItem('authToken') || localStorage.getItem('firebaseToken')
 
             const [bloodRes, locRes, timeRes, statusRes] = await Promise.all([
-                fetch(`${import.meta.env.VITE_API_URL}/admin/stats/bloodtypes`, {
+                fetch(`${import.meta.env.VITE_API_URL}/api/admin/stats/bloodtypes`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 }),
-                fetch(`${import.meta.env.VITE_API_URL}/admin/stats/locations`, {
+                fetch(`${import.meta.env.VITE_API_URL}/api/admin/stats/locations`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 }),
-                fetch(`${import.meta.env.VITE_API_URL}/admin/stats/requests-over-time`, {
+                fetch(`${import.meta.env.VITE_API_URL}/api/admin/stats/requests-over-time`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 }),
-                fetch(`${import.meta.env.VITE_API_URL}/admin/stats/status-breakdown`, {
+                fetch(`${import.meta.env.VITE_API_URL}/api/admin/stats/status-breakdown`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 })
             ])
@@ -111,7 +113,7 @@ export default function AdminDashboard() {
         setRequestsLoading(true)
         try {
             const token = localStorage.getItem('authToken') || localStorage.getItem('firebaseToken')
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/requests/all`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/requests/all`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
 
@@ -130,7 +132,7 @@ export default function AdminDashboard() {
     const handleApproveRequest = async (requestId) => {
         try {
             const token = localStorage.getItem('authToken') || localStorage.getItem('firebaseToken')
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/requests/${requestId}`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/requests/${requestId}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -150,7 +152,7 @@ export default function AdminDashboard() {
     const handleRejectRequest = async (requestId) => {
         try {
             const token = localStorage.getItem('authToken') || localStorage.getItem('firebaseToken')
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/requests/${requestId}`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/requests/${requestId}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -189,13 +191,13 @@ export default function AdminDashboard() {
 
     useEffect(() => {
         applyRequestFilters()
-    }, [statusFilter, bloodTypeFilter, areaFilter])
+    }, [statusFilter, bloodTypeFilter, areaFilter, allRequests])
 
     // ===== QUERY DATABASE TAB =====
     const fetchAreas = async () => {
         try {
             const token = localStorage.getItem('authToken') || localStorage.getItem('firebaseToken')
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/admin/areas`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/areas`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
 
@@ -228,7 +230,7 @@ export default function AdminDashboard() {
             if (queryFilters.ageRange !== 'All') params.append('ageRange', queryFilters.ageRange)
             if (queryFilters.consentOnly) params.append('consentOnly', 'true')
 
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/admin/query?${params.toString()}`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/query?${params.toString()}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
 
@@ -238,6 +240,40 @@ export default function AdminDashboard() {
             }
         } catch (err) {
             console.error('Error running query:', err)
+        } finally {
+            setQueryLoading(false)
+        }
+    }
+
+    const handleFindDonorsForRequest = async (req) => {
+        setSelectedRequest(req);
+        setNotificationSent(null);
+        const newFilters = {
+            bloodType: req.bloodType || 'All',
+            area: '', 
+            donorStatus: 'All donors',
+            ageRange: 'All',
+            consentOnly: false
+        };
+        setQueryFilters(newFilters);
+        setActiveTab('query');
+        
+        setQueryLoading(true);
+        try {
+            const token = localStorage.getItem('authToken') || localStorage.getItem('firebaseToken')
+            const params = new URLSearchParams()
+            if (newFilters.bloodType !== 'All') params.append('bloodType', newFilters.bloodType)
+            
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/query?${params.toString()}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+
+            if (response.ok) {
+                const data = await response.json()
+                setQueryResults(data.donors || [])
+            }
+        } catch (err) {
+            console.error('Error finding donors:', err)
         } finally {
             setQueryLoading(false)
         }
@@ -531,24 +567,35 @@ export default function AdminDashboard() {
                                                             {new Date(req.createdAt).toLocaleDateString()}
                                                         </td>
                                                         <td className="px-4 py-3 text-sm">
-                                                            {req.status === 'pending' ? (
-                                                                <div className="flex gap-2">
+                                                            <div className="flex flex-col gap-2">
+                                                                {req.status === 'pending' && (
+                                                                    <div className="flex gap-2">
+                                                                        <button
+                                                                            onClick={() => handleApproveRequest(req._id)}
+                                                                            className="px-3 py-1 bg-green-500 text-white text-xs rounded font-semibold hover:bg-green-600 transition-colors"
+                                                                        >
+                                                                            Approve
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleRejectRequest(req._id)}
+                                                                            className="px-3 py-1 bg-red-500 text-white text-xs rounded font-semibold hover:bg-red-600 transition-colors"
+                                                                        >
+                                                                            Reject
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                                {(req.status === 'pending' || req.status === 'approved') && (
                                                                     <button
-                                                                        onClick={() => handleApproveRequest(req._id)}
-                                                                        className="px-3 py-1 bg-green-500 text-white text-xs rounded font-semibold hover:bg-green-600 transition-colors"
+                                                                        onClick={() => handleFindDonorsForRequest(req)}
+                                                                        className="px-3 py-1 bg-blue-500 text-white text-xs rounded font-semibold hover:bg-blue-600 transition-colors w-fit"
                                                                     >
-                                                                        Approve
+                                                                        Find Donors
                                                                     </button>
-                                                                    <button
-                                                                        onClick={() => handleRejectRequest(req._id)}
-                                                                        className="px-3 py-1 bg-red-500 text-white text-xs rounded font-semibold hover:bg-red-600 transition-colors"
-                                                                    >
-                                                                        Reject
-                                                                    </button>
-                                                                </div>
-                                                            ) : (
-                                                                <span className="text-gray-500 text-xs">No actions</span>
-                                                            )}
+                                                                )}
+                                                                {req.status !== 'pending' && req.status !== 'approved' && (
+                                                                    <span className="text-gray-500 text-xs">No actions</span>
+                                                                )}
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -563,6 +610,25 @@ export default function AdminDashboard() {
                         {activeTab === 'query' && (
                             <div>
                                 <h2 className="text-2xl font-bold text-gray-800 mb-6">Database Explorer</h2>
+
+                                {selectedRequest && (
+                                    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-r-lg">
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <h4 className="text-blue-800 font-bold">Mapping Donors for Patient: {selectedRequest.patientName}</h4>
+                                                <p className="text-blue-600 text-sm">
+                                                    Needs {selectedRequest.bloodType} blood at {selectedRequest.hospitalName}, {selectedRequest.hospitalLocation}
+                                                </p>
+                                            </div>
+                                            <button 
+                                                onClick={() => setSelectedRequest(null)}
+                                                className="text-blue-500 hover:text-blue-700 text-sm font-semibold"
+                                            >
+                                                Clear Mapping
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Query Filters */}
                                 <div className="bg-gray-50 p-6 rounded-lg mb-6 border border-gray-200">
@@ -679,6 +745,9 @@ export default function AdminDashboard() {
                                                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">Area</th>
                                                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">Hemoglobin</th>
                                                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">Contact</th>
+                                                        {selectedRequest && (
+                                                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">Action</th>
+                                                        )}
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -692,6 +761,23 @@ export default function AdminDashboard() {
                                                             <td className="px-4 py-3 text-sm text-gray-800">
                                                                 {donor.consentCheckbox ? donor.email || donor.phone : 'Not shared'}
                                                             </td>
+                                                            {selectedRequest && (
+                                                                <td className="px-4 py-3 text-sm">
+                                                                    {notificationSent === donor._id ? (
+                                                                        <span className="text-green-600 font-semibold text-xs">✓ Sent to Requester</span>
+                                                                    ) : (
+                                                                        <button 
+                                                                            onClick={() => {
+                                                                                setNotificationSent(donor._id);
+                                                                                setTimeout(() => alert(`Success! An email containing ${donor.fullName}'s contact info has been sent to ${selectedRequest.email}.`), 300);
+                                                                            }}
+                                                                            className="px-3 py-1 bg-blue-500 text-white text-xs rounded font-semibold hover:bg-blue-600 transition-colors"
+                                                                        >
+                                                                            Send to Requester
+                                                                        </button>
+                                                                    )}
+                                                                </td>
+                                                            )}
                                                         </tr>
                                                     ))}
                                                 </tbody>
