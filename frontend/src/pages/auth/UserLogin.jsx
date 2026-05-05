@@ -2,13 +2,17 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth'
 import { auth, googleProvider } from '../../firebase'
+import { checkVerificationStatus } from '../../utils/emailVerification'
 import BloodCellBackground from '../../components/BloodCellBackground'
+import EmailVerificationModal from '../../components/EmailVerificationModal'
 
 export default function UserLogin() {
     const navigate = useNavigate()
     const [formData, setFormData] = useState({ email: '', password: '' })
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
+    const [showVerificationModal, setShowVerificationModal] = useState(false)
+    const [currentUser, setCurrentUser] = useState(null)
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -55,6 +59,17 @@ export default function UserLogin() {
         try {
             // Firebase login
             const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password)
+
+            // Check if email is verified
+            const isVerified = await checkVerificationStatus()
+
+            if (!isVerified) {
+                setCurrentUser(userCredential.user)
+                setShowVerificationModal(true)
+                setLoading(false)
+                return
+            }
+
             const idToken = await userCredential.user.getIdToken()
 
             const registerResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/register`, {
@@ -64,7 +79,8 @@ export default function UserLogin() {
                     uid: userCredential.user.uid,
                     email: formData.email,
                     name: userCredential.user.displayName || formData.email.split('@')[0],
-                    role: 'user'
+                    role: 'user',
+                    emailVerified: true
                 })
             })
 
@@ -86,6 +102,16 @@ export default function UserLogin() {
     return (
         <div className="page-shell page-shell--plain">
             <BloodCellBackground />
+
+            {showVerificationModal && currentUser && (
+                <EmailVerificationModal
+                    user={currentUser}
+                    onVerified={() => {
+                        setShowVerificationModal(false)
+                        navigate('/dashboard/user')
+                    }}
+                />
+            )}
 
             <div className="content-shell relative z-10 min-h-screen flex items-center justify-center px-4 py-12">
                 <div className="w-full max-w-md">

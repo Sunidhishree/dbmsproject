@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import BloodCellBackground from '../../components/BloodCellBackground'
+import MessagesPanel from '../../components/MessagesPanel'
 
 export default function UserDashboard() {
     const navigate = useNavigate()
@@ -199,6 +200,15 @@ export default function UserDashboard() {
                                 }`}
                         >
                             Request Blood
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('messages')}
+                            className={`flex-1 py-4 px-6 font-semibold text-lg transition-colors duration-300 ${activeTab === 'messages'
+                                ? 'text-red border-b-4 border-red'
+                                : 'text-gray-600 hover:text-red'
+                                }`}
+                        >
+                            Messages
                         </button>
                     </div>
 
@@ -538,6 +548,14 @@ export default function UserDashboard() {
                                         </div>
                                     )}
                                 </div>
+                            </div>
+                        )}
+
+                        {/* TAB 3: MESSAGES */}
+                        {activeTab === 'messages' && (
+                            <div>
+                                <h2 className="font-heading text-4xl text-dark mb-6">Admin Messages</h2>
+                                <MessagesPanel userUid={localStorage.getItem('userRole')} />
                             </div>
                         )}
                     </div>

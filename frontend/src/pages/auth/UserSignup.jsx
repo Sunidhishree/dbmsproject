@@ -2,13 +2,17 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createUserWithEmailAndPassword, signInWithPopup } from 'firebase/auth'
 import { auth, googleProvider } from '../../firebase'
+import { sendVerificationEmail } from '../../utils/emailVerification'
 import BloodCellBackground from '../../components/BloodCellBackground'
+import EmailVerificationModal from '../../components/EmailVerificationModal'
 
 export default function UserSignup() {
     const navigate = useNavigate()
     const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '' })
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
+    const [showVerificationModal, setShowVerificationModal] = useState(false)
+    const [currentUser, setCurrentUser] = useState(null)
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -62,9 +66,13 @@ export default function UserSignup() {
         try {
             // Create Firebase user
             const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password)
-            const idToken = await userCredential.user.getIdToken()
+
+            // Send verification email
+            await sendVerificationEmail(userCredential.user)
+            setCurrentUser(userCredential.user)
 
             // Register user in MongoDB via Flask
+            const idToken = await userCredential.user.getIdToken()
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
@@ -72,7 +80,8 @@ export default function UserSignup() {
                     uid: userCredential.user.uid,
                     email: formData.email,
                     name: formData.name,
-                    role: 'user'
+                    role: 'user',
+                    emailVerified: false
                 })
             })
 
@@ -84,10 +93,12 @@ export default function UserSignup() {
             localStorage.setItem('userRole', 'user')
             localStorage.setItem('userName', formData.name)
 
-            // Redirect to donor registration
-            navigate('/register/donor')
+            // Show verification modal
+            setShowVerificationModal(true)
         } catch (err) {
-            setError(err.message)
+            setShowVerificationModal(false)
+            setCurrentUser(null)
+            setError(err?.message || 'Failed to create account or send verification email')
         } finally {
             setLoading(false)
         }
@@ -96,6 +107,16 @@ export default function UserSignup() {
     return (
         <div className="page-shell page-shell--plain">
             <BloodCellBackground />
+
+            {showVerificationModal && currentUser && (
+                <EmailVerificationModal
+                    user={currentUser}
+                    onVerified={() => {
+                        setShowVerificationModal(false)
+                        navigate('/register/donor')
+                    }}
+                />
+            )}
 
             <div className="content-shell relative z-10 min-h-screen flex items-center justify-center px-4 py-12">
                 <div className="w-full max-w-md">

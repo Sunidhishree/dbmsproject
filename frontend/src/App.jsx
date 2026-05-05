@@ -5,6 +5,7 @@ import AuthSelect from './pages/AuthSelect'
 import UserLogin from './pages/auth/UserLogin'
 import UserSignup from './pages/auth/UserSignup'
 import AdminLogin from './pages/auth/AdminLogin'
+import AdminSignup from './pages/auth/AdminSignup'
 import DonorRegister from './pages/DonorRegister'
 import UserDashboard from './pages/dashboard/UserDashboard'
 import AdminDashboard from './pages/dashboard/AdminDashboard'
@@ -24,6 +25,7 @@ export default function App() {
                 <Route path="/login/user" element={<UserLogin />} />
                 <Route path="/signup/user" element={<UserSignup />} />
                 <Route path="/login/admin" element={<AdminLogin />} />
+                <Route path="/signup/admin" element={<AdminSignup />} />
 
                 {/* Donor Routes */}
                 <Route path="/register/donor" element={<DonorRegister />} />

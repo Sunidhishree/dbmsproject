@@ -229,3 +229,21 @@ def get_dashboard():
         return jsonify(stats), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@admin_bp.route("/admins", methods=["GET"])
+def get_admin_table():
+    """Get seeded admin records with hospital and completed request links."""
+    try:
+        db = get_db()
+        admins = list(db["admins"].find({}))
+
+        for admin in admins:
+            admin["_id"] = str(admin["_id"])
+            if admin.get("completedRequestId") is not None:
+                admin["completedRequestId"] = str(admin["completedRequestId"])
+            admin["completedRequestIds"] = [str(request_id) for request_id in admin.get("completedRequestIds", [])]
+
+        return jsonify({"admins": admins}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

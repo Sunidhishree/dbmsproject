@@ -2,23 +2,27 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth'
 import { auth, googleProvider } from '../../firebase'
+import { checkVerificationStatus } from '../../utils/emailVerification'
 import BloodCellBackground from '../../components/BloodCellBackground'
+import EmailVerificationModal from '../../components/EmailVerificationModal'
 
 export default function AdminLogin() {
     const navigate = useNavigate()
     const [formData, setFormData] = useState({ email: '', password: '' })
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
+    const [showVerificationModal, setShowVerificationModal] = useState(false)
+    const [currentUser, setCurrentUser] = useState(null)
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value })
     }
 
-    const saveAdminSession = async (idToken, uid, email, name) => {
+    const saveAdminSession = async (idToken, uid, email, name, emailVerified = false) => {
         const registerResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
-            body: JSON.stringify({ uid, email, name, role: 'admin' })
+            body: JSON.stringify({ uid, email, name, role: 'admin', emailVerified })
         })
 
         if (!registerResponse.ok) {
@@ -59,12 +63,24 @@ export default function AdminLogin() {
 
         try {
             const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password)
+
+            // Check if email is verified
+            const isVerified = await checkVerificationStatus()
+
+            if (!isVerified) {
+                setCurrentUser(userCredential.user)
+                setShowVerificationModal(true)
+                setLoading(false)
+                return
+            }
+
             const idToken = await userCredential.user.getIdToken()
             await saveAdminSession(
                 idToken,
                 userCredential.user.uid,
                 formData.email,
-                userCredential.user.displayName || formData.email.split('@')[0]
+                userCredential.user.displayName || formData.email.split('@')[0],
+                true
             )
         } catch (err) {
             setError(err.message)
@@ -76,6 +92,16 @@ export default function AdminLogin() {
     return (
         <div className="page-shell page-shell--plain">
             <BloodCellBackground />
+
+            {showVerificationModal && currentUser && (
+                <EmailVerificationModal
+                    user={currentUser}
+                    onVerified={() => {
+                        setShowVerificationModal(false)
+                        navigate('/dashboard/admin')
+                    }}
+                />
+            )}
 
             <div className="content-shell relative z-10 min-h-screen flex items-center justify-center px-4 py-12">
                 <div className="w-full max-w-md">
@@ -145,6 +171,15 @@ export default function AdminLogin() {
                             Sign in with Google
                         </button>
 
+                        <p className="text-center text-gray-600 mt-6">
+                            New admin?{' '}
+                            <button
+                                onClick={() => navigate('/signup/admin')}
+                                className="text-red-dark font-semibold hover:underline"
+                            >
+                                Register here
+                            </button>
+                        </p>
                     </div>
                 </div>
             </div>
