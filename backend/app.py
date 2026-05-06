@@ -31,11 +31,13 @@ from routes.auth import auth_bp
 from routes.donors import donors_bp
 from routes.requests import requests_bp
 from routes.admin import admin_bp
+from routes.chat import chat_bp
 
 app.register_blueprint(auth_bp, url_prefix="/api/auth")
 app.register_blueprint(donors_bp, url_prefix="/api/donors")
 app.register_blueprint(requests_bp, url_prefix="/api/requests")
 app.register_blueprint(admin_bp, url_prefix="/api/admin")
+app.register_blueprint(chat_bp, url_prefix="/api/chat")
 
 @app.route("/api/health", methods=["GET"])
 def health_check():

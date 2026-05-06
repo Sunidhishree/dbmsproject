@@ -11,6 +11,7 @@ import UserDashboard from './pages/dashboard/UserDashboard'
 import AdminDashboard from './pages/dashboard/AdminDashboard'
 import NotFound from './pages/NotFound'
 import Navbar from './components/Navbar'
+import Chatbot from './components/Chatbot'
 import './index.css'
 
 export default function App() {
@@ -37,6 +38,7 @@ export default function App() {
                 {/* 404 Not Found */}
                 <Route path="*" element={<NotFound />} />
             </Routes>
+            <Chatbot />
         </Router>
     )
 }
